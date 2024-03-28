@@ -3,19 +3,21 @@ package client
 import (
 	"bytes"
 	"fmt"
+	"io"
+
 	"github.com/PuerkitoBio/goquery"
 	"github.com/cecobask/imdb-trakt-sync/pkg/entities"
-	"io"
 )
 
-type ImdbClientInterface interface {
-	ListGet(listId string) (*entities.ImdbList, error)
-	ListsGet(listIds []string) ([]entities.ImdbList, error)
-	WatchlistGet() (*entities.ImdbList, error)
-	ListsGetAll() ([]entities.ImdbList, error)
-	RatingsGet() ([]entities.ImdbItem, error)
-	UserIdScrape() error
-	WatchlistIdScrape() error
+type IMDbClientInterface interface {
+	ListGet(listID string) (*entities.IMDbList, error)
+	ListsGet(listIDs []string) ([]entities.IMDbList, error)
+	WatchlistGet() (*entities.IMDbList, error)
+	ListsGetAll() ([]entities.IMDbList, error)
+	RatingsGet() ([]entities.IMDbItem, error)
+	UserIDScrape() error
+	WatchlistIDScrape() error
+	Hydrate() error
 }
 
 type TraktClientInterface interface {
@@ -29,23 +31,23 @@ type TraktClientInterface interface {
 	WatchlistGet() (*entities.TraktList, error)
 	WatchlistItemsAdd(items entities.TraktItems) error
 	WatchlistItemsRemove(items entities.TraktItems) error
-	ListGet(listId string) (*entities.TraktList, error)
-	ListsGet(ids []entities.TraktIds) ([]entities.TraktList, error)
-	ListItemsAdd(listId string, items entities.TraktItems) error
-	ListItemsRemove(listId string, items entities.TraktItems) error
-	ListsMetadataGet() ([]entities.TraktList, error)
-	ListAdd(listId, listName string) error
-	ListRemove(listId string) error
+	ListGet(listID string) (*entities.TraktList, error)
+	ListsGet(idMeta []entities.TraktIDMeta) ([]entities.TraktList, error)
+	ListItemsAdd(listID string, items entities.TraktItems) error
+	ListItemsRemove(listID string, items entities.TraktItems) error
+	ListAdd(listID, listName string) error
+	ListRemove(listID string) error
 	RatingsGet() (entities.TraktItems, error)
 	RatingsAdd(items entities.TraktItems) error
 	RatingsRemove(items entities.TraktItems) error
-	HistoryGet(itemType, itemId string) (entities.TraktItems, error)
+	HistoryGet(itemType, itemID string) (entities.TraktItems, error)
 	HistoryAdd(items entities.TraktItems) error
 	HistoryRemove(items entities.TraktItems) error
+	Hydrate() error
 }
 
 const (
-	clientNameImdb  = "imdb"
+	clientNameIMDb  = "imdb"
 	clientNameTrakt = "trakt"
 )
 
@@ -65,7 +67,7 @@ type reusableReader struct {
 
 func ReusableReader(r io.Reader) io.Reader {
 	readBuf := bytes.Buffer{}
-	readBuf.ReadFrom(r)
+	_, _ = readBuf.ReadFrom(r)
 	backBuf := bytes.Buffer{}
 	return reusableReader{
 		Reader:  io.TeeReader(&readBuf, &backBuf),
@@ -77,7 +79,7 @@ func ReusableReader(r io.Reader) io.Reader {
 func (r reusableReader) Read(p []byte) (int, error) {
 	n, err := r.Reader.Read(p)
 	if err == io.EOF {
-		io.Copy(r.readBuf, r.backBuf)
+		_, _ = io.Copy(r.readBuf, r.backBuf)
 	}
 	return n, err
 }
